@@ -1,337 +1,447 @@
 # Finite Element Solver for the 2D Helmholtz Equation using Domain Decomposition Methods
 
-## Description
+## Overview
 
-Ce projet porte sur la résolution numérique de l'équation de Helmholtz en dimension deux par la méthode des éléments finis (FEM), avec une étude de méthodes itératives et de décomposition de domaines.
+This project focuses on the numerical resolution of the two-dimensional Helmholtz equation using the Finite Element Method (FEM).
 
-L'objectif principal est de développer un solveur capable de traiter des problèmes d'ondes avec une solution oscillante, tout en étudiant des stratégies permettant d'améliorer la résolution de systèmes linéaires de grande taille.
+The objective is to develop and study iterative solvers for large sparse complex linear systems arising from wave propagation problems, with a particular focus on **Domain Decomposition Methods (DDM)** and their potential for high-performance computing.
 
-Le problème étudié est :
+Two approaches are implemented:
 
-\[
--\Delta u - \kappa^2 u = f \quad \text{dans } \Omega
-\]
+- a global FEM solver using GMRES;
+- a non-overlapping Domain Decomposition solver combined with GMRES.
 
-avec une condition aux limites de rayonnement :
+The project also explores possible extensions toward parallel computing architectures such as MPI and GPU acceleration.
 
-\[
-\partial_n u - i\kappa u = 0 \quad \text{sur } \partial\Omega
-\]
+A detailed numerical study and analysis of the obtained results are available in:
 
-où :
-
-- $\Omega$ est un domaine rectangulaire ;
-- $\kappa$ est le nombre d'onde ;
-- $\partial_n$ est la dérivée normale sortante ;
-- $f$ représente une excitation composée de sources ponctuelles régularisées.
-
-Le terme source est défini par :
-
-\[
-f(x)=\sum_{i=1}^{N_s} w_i
-\exp\left(-\frac{10}{\lambda^2}|x-s_i|^2\right)
-\]
-
-avec :
-
-- $s_i$ la position des sources ;
-- $w_i$ leurs poids complexes ;
-- $\lambda=2\pi/\kappa$ la longueur d'onde.
+```
+docs/Rapport.pdf
+```
 
 ---
 
-# Méthode numérique
+# Mathematical problem
 
-## Discrétisation éléments finis
+We consider the Helmholtz equation on a rectangular domain:
 
-Le problème est discrétisé par une méthode des éléments finis conformes de type :
+$$
+\Omega = (0,L_x)\times(0,L_y)
+$$
 
-- éléments triangulaires ;
-- éléments finis $P_1$ de Lagrange ;
-- maillage uniforme du domaine.
+The problem is:
 
-La formulation variationnelle consiste à chercher :
+$$
+-\Delta u-\kappa^2 u=f \quad \text{in } \Omega
+$$
 
-\[
-u \in H^1(\Omega)
-\]
+with an absorbing boundary condition:
 
-tel que :
+$$
+\partial_n u-i\kappa u=0
+\quad \text{on } \partial\Omega
+$$
 
-\[
-a(u,v)=\ell(v), \quad \forall v\in H^1(\Omega)
-\]
 
-avec :
+where:
 
-\[
-a(u,v)=
-\int_\Omega
-(\nabla u \cdot \nabla v-\kappa^2uv)
--
-i\kappa\int_{\Gamma}uv
-\]
+- $\kappa$ is the wave number;
+- $\partial_n$ is the outward normal derivative;
+- $f$ represents a set of localized sources.
 
-La discrétisation conduit à un système linéaire :
+The source term is modeled as a superposition of regularized point sources:
 
-\[
+$$
+f(x)=
+\sum_{i=1}^{N_s}
+w_i
+\exp
+\left(
+-\frac{10}{\lambda^2}|x-s_i|^2
+\right)
+$$
+
+
+with:
+
+- $s_i$ : source position;
+- $w_i$ : complex source weight;
+- $\lambda=2\pi/\kappa$ : wavelength.
+
+
+The absorbing boundary condition approximates outgoing wave radiation.
+
+---
+
+# Numerical method
+
+## Finite Element discretization
+
+The problem is discretized using:
+
+- conforming finite elements;
+- triangular mesh;
+- first-order Lagrange elements ($P_1$).
+
+
+The weak formulation leads to the linear system:
+
+$$
 Au=b
-\]
+$$
 
-où :
 
-- $A$ est une matrice creuse complexe ;
-- le système est indéfini à cause du terme $-\kappa^2u$ ;
-- la résolution devient difficile lorsque le maillage est raffiné.
+where:
 
-Pour assurer une bonne résolution des oscillations, la taille du maillage doit respecter :
+- $A$ is a sparse complex matrix;
+- the system is indefinite due to the Helmholtz term;
+- solving the system becomes increasingly expensive for refined meshes.
 
-\[
+
+To correctly represent oscillations, the mesh size must satisfy approximately:
+
+$$
 h \lesssim \frac{\lambda}{10}
-\]
+$$
+
 
 ---
 
-# Approches étudiées
+# Implemented solvers
 
-Deux approches de résolution sont implémentées.
+## 1. Global FEM solver + GMRES
 
----
+The first approach consists in assembling the complete finite element system:
 
-## 1. Résolution globale avec GMRES
-
-La première approche consiste à assembler directement le système global :
-
-\[
+$$
 Au=b
-\]
-
-puis à résoudre ce système avec :
-
-- GMRES ;
-- méthode de point fixe pour certains opérateurs.
-
-Cette approche sert de référence pour comparer les performances.
-
-Fichier associé : solve_global.py
+$$
 
 
----
+and solving it using iterative methods:
 
-## 2. Décomposition de domaines + GMRES
-
-La seconde approche utilise une méthode de décomposition de domaines non recouvrante.
-
-Le domaine $\Omega$ est séparé en plusieurs sous-domaines :
-
-+------------+
-| Domain 1 |
-+------------+
-| Domain 2 |
-+------------+
-| Domain 3 |
-+------------+
+- GMRES;
+- fixed-point iterations for some operators.
 
 
-Pour chaque sous-domaine :
+This solver is used as a reference implementation.
 
-1. construction du maillage local ;
-2. assemblage des matrices locales ;
-3. résolution du problème local ;
-4. construction d'un opérateur global de transmission ;
-5. résolution du problème global avec GMRES.
+Execution:
 
-Cette approche permet d'exploiter l'indépendance entre les sous-domaines et constitue une base naturelle pour une future parallélisation.
+```bash
+make run-global
+```
 
-Fichier associé : solve_ddm.py
+or:
 
+```bash
+python run_global_solver.py
+```
 
 ---
 
-# Organisation du projet
+## 2. Domain Decomposition Method + GMRES
 
+The second approach uses a non-overlapping domain decomposition strategy.
+
+The computational domain is split into several independent subdomains:
+
+```text
++----------------+
+|   Domain 1     |
++----------------+
+|   Domain 2     |
++----------------+
+|   Domain 3     |
++----------------+
+```
+
+
+For each subdomain:
+
+1. generate a local mesh;
+2. assemble local FEM matrices;
+3. solve local problems;
+4. construct transmission operators;
+5. solve the global interface problem using GMRES.
+
+
+This approach introduces natural parallelism because local computations are independent.
+
+Execution:
+
+```bash
+make run-ddm
+```
+
+or:
+
+```bash
+python run_ddm_solver.py
+```
+
+---
+
+# Project structure
+
+```text
 DDM/
 │
 ├── Dockerfile
+├── Makefile
 ├── requirements.txt
-├── .dockerignore
-├── solve_global.py
-├── solve_ddm.py
 ├── config.py
-├── perf.py
+│
+├── run_global_solver.py
+├── run_ddm_solver.py
 │
 ├── mesh/
-│ ├── mesh.py
-│ ├── refine_mesh.py
-│ ├── plot_mesh.py
-│ └── dd_plot.py
+│   ├── mesh.py
+│   ├── refine_mesh.py
+│   ├── plot_mesh.py
+│   └── dd_plot.py
 │
 ├── fem/
-│ ├── local_matrices.py
-│ ├── global_matrices.py
-│ └── RHS.py
+│   ├── local_matrices.py
+│   ├── global_matrices.py
+│   └── RHS.py
 │
 ├── operators/
-│ ├── local_problems.py
-│ └── global_operators.py
+│   ├── local_problems.py
+│   └── global_operators.py
 │
 ├── solvers/
-│ ├── solvers.py
-│ └── GMRES_sub_domaines.py
+│   ├── solvers.py
+│   └── GMRES_sub_domaines.py
 │
 ├── benchmarks/
 │
 └── docs/
     └── Rapport.pdf
-
-## Docker
-
-Le projet fournit une image Docker contenant toutes les dépendances Python nécessaires à l'exécution des solveurs.
-
-### Construction de l'image
-
-Depuis la racine du projet pour construire l'image helmholtz-ddm : 
-
-```bash
-make build
-```
-Exécution du solveur global dans le conteneur Docker:
-
-```bash
-make run-global
-```
-Exécution du solveur par décomposition de domaines dans le conteneur Docker:
-```bash
-make run-ddm
 ```
 
 ---
 
-# Description des modules
+# Module description
 
 ## mesh/
 
-Gestion du maillage :
+Contains all mesh-related operations:
 
-- génération du domaine triangulaire ;
-- raffinement ;
-- extraction des frontières ;
-- visualisation des sous-domaines.
+- rectangular mesh generation;
+- mesh refinement;
+- boundary extraction;
+- visualization of subdomains.
 
 ---
 
 ## fem/
 
-Implémentation des opérateurs éléments finis :
+Finite element implementation:
 
-- matrices locales ;
-- assemblage global ;
-- second membre associé aux sources ponctuelles.
+- local element matrices;
+- global matrix assembly;
+- right-hand-side construction;
+- source term generation.
 
 ---
 
 ## operators/
 
-Construction des opérateurs nécessaires à la résolution :
+Construction of operators required by the domain decomposition method:
 
-- problèmes locaux sur chaque sous-domaine ;
-- opérateurs de transmission ;
-- opérateur global utilisé par GMRES.
+- local subdomain problems;
+- local factorizations;
+- transmission operators;
+- global interface operator.
 
 ---
 
 ## solvers/
 
-Contient les solveurs numériques :
+Contains numerical solvers:
 
-- GMRES classique ;
-- GMRES appliqué à la décomposition de domaines ;
-- méthodes itératives complémentaires.
+- classical GMRES;
+- GMRES applied to domain decomposition;
+- iterative procedures.
 
 ---
 
-# Résultats
+# Installation
 
-Les expériences numériques sont détaillées dans :
+## Python environment
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+
+Main dependencies:
+
+- numpy;
+- scipy;
+- matplotlib.
+
+---
+
+# Docker support
+
+The project provides a Docker environment containing all required dependencies.
+
+## Build image
+
+From the project root:
+
+```bash
+make build
+```
+
+
+This creates the Docker image:
+
+```
+helmholtz-ddm
+```
+
+
+## Run global solver
+
+```bash
+make run-global
+```
+
+
+## Run domain decomposition solver
+
+```bash
+make run-ddm
+```
+
+
+Docker ensures reproducible execution independently of the local Python environment.
+
+---
+
+# Results
+
+The numerical experiments are described in:
+
+```
 docs/Rapport.pdf
+```
 
 
-Le rapport présente notamment :
+The report contains:
 
-- l'influence du raffinement du maillage ;
-- la convergence de GMRES ;
-- la comparaison entre résolution globale et DDM ;
-- l'impact du nombre de sous-domaines ;
-- l'analyse des performances numériques.
+- mesh refinement studies;
+- GMRES convergence analysis;
+- comparison between global resolution and DDM;
+- influence of the number of subdomains;
+- numerical performance analysis.
 
 ---
 
-# Utilisation
+# Performance and HPC perspectives
 
-Résolution classique : python solve_global.py
-Résolution par décomposition de domaines : python solve_ddm.py
+Domain decomposition methods are naturally suited for parallel computing.
 
-# Perspectives HPC : 
+## MPI parallelization
 
-La méthode de décomposition de domaines est particulièrement adaptée aux architectures parallèles.
+Each subdomain can be assigned to an MPI process:
 
-1. Parallélisation MPI
 
-Chaque sous-domaine peut être associé à un processus MPI indépendant :
+```text
+MPI rank 0       MPI rank 1       MPI rank 2
 
-MPI Rank 0        MPI Rank 1        MPI Rank 2
+Domain 0         Domain 1         Domain 2
 
-Domain 0          Domain 1          Domain 2
+Local FEM        Local FEM        Local FEM
 
-Local FEM         Local FEM         Local FEM
+      \             |             /
 
-      \              |              /
+          Interface communication
 
-        Communication interfaces
+                 GMRES
+```
 
-              GMRES global
 
-Les calculs pouvant être parallélisés :
+The following operations can be distributed:
 
-génération des maillages locaux ;
-assemblage FEM local ;
-factorisations locales ;
-résolutions locales.
+- local mesh generation;
+- FEM assembly;
+- local matrix factorization;
+- local solves.
 
-Une implémentation possible :
 
-mpi4py pour une version Python ;
-PETSc/petsc4py pour une version HPC plus avancée.
+Possible implementations:
 
-2. Architecture hybride MPI + GPU
+- `mpi4py` for a Python implementation;
+- `petsc4py` / PETSc for a more scalable HPC solver.
 
-Une évolution possible serait un solveur hybride :
+---
 
-        Cluster HPC
+## GPU acceleration
 
-+-----------------------+
-| Node 1                |
-| GPU + MPI process     |
-| Domain 1              |
-+-----------------------+
+Local finite element computations and linear algebra operations could also benefit from GPU acceleration.
 
-+-----------------------+
-| Node 2                |
-| GPU + MPI process     |
-| Domain 2              |
-+-----------------------+
+A possible future architecture:
+
+
+```text
+        HPC Cluster
+
++----------------------+
+| Node 1               |
+| MPI + GPU            |
+| Subdomain 1          |
++----------------------+
+
++----------------------+
+| Node 2               |
+| MPI + GPU            |
+| Subdomain 2          |
++----------------------+
+
 
           MPI
 
-       GMRES global
+     Global GMRES solver
+```
 
-Chaque nœud traiterait un ensemble de sous-domaines avec accélération GPU locale.
 
-# Améliorations possibles
-- ajout de préconditionneurs Schwarz ;
-- étude de méthodes additives/multiplicatives ;
-- résolution sur des maillages beaucoup plus grands ;
-- comparaison avec PETSc ;
-- parallélisation MPI ;
-- accélération GPU ;
-- benchmark sur architectures HPC.
+Potential GPU targets:
+
+- sparse matrix operations;
+- local factorizations;
+- matrix-vector products;
+- preconditioners.
+
+---
+
+# Future improvements
+
+Possible extensions:
+
+- implement additive/multiplicative Schwarz preconditioners;
+- compare different domain decomposition strategies;
+- integrate PETSc;
+- solve larger scale problems;
+- add MPI parallel execution;
+- explore GPU acceleration;
+- benchmark on HPC clusters.
+
+---
+
+# Author
+
+Project developed as a numerical simulation and scientific computing project.
+
+Main topics:
+
+- Finite Element Methods;
+- Helmholtz equation;
+- Iterative solvers;
+- Domain Decomposition;
+- High Performance Computing.
