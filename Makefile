@@ -1,17 +1,21 @@
-IMAGE=helmholtz-ddm
+IMAGE := helmholtz-ddm
+
+.PHONY: all build run-global run-ddm clean
+
+all: build run-global run-ddm
 
 build:
 	docker build -t $(IMAGE) .
 
 run-global:
 	docker run --rm \
-	$(IMAGE) python run_global_solver.py
+		-v "$(PWD)/benchmarks:/app/benchmarks" \
+		$(IMAGE) python -m bin.run_global_solver
 
 run-ddm:
 	docker run --rm \
-	$(IMAGE) python run_ddm_solver.py
+		-v "$(PWD)/benchmarks:/app/benchmarks" \
+		$(IMAGE) python -m bin.run_ddm_solver
 
-update:
-	git pull
-	docker compose build
-	docker compose up
+clean:
+	rm -f benchmarks/*.png

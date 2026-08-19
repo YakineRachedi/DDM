@@ -1,16 +1,26 @@
 #! /usr/bin/python3
 
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
 
-from mesh.mesh import local_mesh, local_boundary
-from mesh.plot_mesh import plot_mesh
+from bin.config import J, Lx, Ly, k, nx, ny, ps
 from fem.local_matrices import Bj_matrix, Cj_matrix
-from operators.local_problems import Aj_matrix, Tj_matrix, Sj_factorization, bj_vector
+from mesh.mesh import local_boundary, local_mesh
+from mesh.plot_mesh import plot_mesh
 from operators.global_operators import g_vector
+from operators.local_problems import (
+    Aj_matrix,
+    Tj_matrix,
+    Sj_factorization,
+    bj_vector,
+)
 from solvers.solvers import fixed_point_solver, gmres_solver, uj_solution
-import matplotlib.pyplot as plt
-from config import *
 
+
+BENCH_DIR = Path("benchmarks")
+BENCH_DIR.mkdir(parents=True, exist_ok=True)
 if __name__ == "__main__":
     locals_ = []
 
@@ -86,8 +96,7 @@ if __name__ == "__main__":
     plt.ylabel(r"$\|r_k\|_2$")
     plt.legend()
     plt.grid(True, which="both", linestyle="--", alpha=0.4)
-    plt.savefig("benchmarks/GMRES_vs_PF.png")
-    plt.show()
+    plt.savefig(BENCH_DIR / "GMRES_vs_PF.png")
 
     # Reconstruction des solutions locales
     u_list = uj_solution(p_gm, locals_, J)
@@ -115,5 +124,4 @@ if __name__ == "__main__":
         plot_mesh(vtxj, eltj, val=val, vmin=vmin, vmax=vmax)
     plt.colorbar()
     plt.title(f"Solutions locales superposées ({plot_mode})")
-    plt.savefig("benchmarks/Sol_local_spp.png")
-    plt.show()
+    plt.savefig(BENCH_DIR / "Sol_local_spp.png")

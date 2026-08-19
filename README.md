@@ -186,38 +186,54 @@ python run_ddm_solver.py
 
 ```text
 DDM/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 │
-├── Dockerfile
-├── Makefile
-├── requirements.txt
-├── config.py
-│
-├── run_global_solver.py
-├── run_ddm_solver.py
-│
-├── mesh/
-│   ├── mesh.py
-│   ├── refine_mesh.py
-│   ├── plot_mesh.py
-│   └── dd_plot.py
-│
-├── fem/
-│   ├── local_matrices.py
-│   ├── global_matrices.py
-│   └── RHS.py
-│
-├── operators/
-│   ├── local_problems.py
-│   └── global_operators.py
-│
-├── solvers/
-│   ├── solvers.py
-│   └── GMRES_sub_domaines.py
+├── bin/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── perf.py
+│   ├── run_ddm_solver.py
+│   └── run_global_solver.py
 │
 ├── benchmarks/
+│   ├── GMRES_sub_domains.png
+│   ├── GMRES_vs_PF.png
+│   ├── Sol_local_spp.png
+│   └── perf.png
 │
-└── docs/
-    └── Rapport.pdf
+├── docs/
+│   └── rapport.pdf
+│
+├── fem/
+│   ├── __init__.py
+│   ├── global_matrices.py
+│   ├── local_matrices.py
+│   └── RHS.py
+│
+├── mesh/
+│   ├── __init__.py
+│   ├── dd_plot.py
+│   ├── mesh.py
+│   ├── plot_mesh.py
+│   └── refine_mesh.py
+│
+├── operators/
+│   ├── __init__.py
+│   ├── global_operators.py
+│   └── local_problems.py
+│
+├── solvers/
+│   ├── __init__.py
+│   └── solvers.py
+│
+│
+├── .gitignore
+├── Dockerfile
+├── Makefile
+├── Readme.md
+└── requirements.txt
 ```
 
 ---

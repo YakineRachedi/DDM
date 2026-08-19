@@ -43,5 +43,4 @@ for j in range(J):
 ax.set_title("Décomposition du domaine en sous-domaines")
 ax.set_aspect("equal")
 plt.tight_layout()
-plt.savefig("DD.png")
-plt.show()
+plt.savefig("benchmarks/DD.png")
